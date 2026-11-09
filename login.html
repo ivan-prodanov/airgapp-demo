@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8"><link rel="icon" href="/static/img/airgapp-icon.png"><script src="/wasm_exec.js"></script><script src="/demo-boot.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign in — Airgapp</title>
+    <link rel="preload" href="/static/fonts/saira.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="/static/css/gap.css">
+</head>
+<body>
+    <main class="login" x-data="loginApp()">
+        <form class="login-card" method="post" @submit.prevent="login()" data-rise>
+            <h1 class="vh">Sign in to Airgapp</h1>
+            <span class="brand-logo login-logo" aria-hidden="true"></span>
+            <label class="login-field">
+                <span class="login-label">Username</span>
+                <input class="login-input" type="text" name="username" x-model="username" autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus>
+            </label>
+            <label class="login-field">
+                <span class="login-label">Password</span>
+                <input class="login-input" type="password" name="password" x-model="password" autocomplete="current-password" required>
+            </label>
+            <p class="login-error" role="alert" x-text="error"></p>
+            <button class="login-btn" type="submit" :disabled="loading" x-text="loading ? 'Signing in…' : 'Sign in'">Sign in</button>
+        </form>
+    </main>
+
+    <div id="toast-container" role="status" aria-live="polite"></div>
+
+    <script src="/static/js/alpine.min.js" defer></script>
+    <script src="/static/js/app.js"></script>
+    <script>
+    function loginApp() {
+        return {
+            username: '',
+            password: '',
+            loading: false,
+            error: '',
+            async login() {
+                this.loading = true;
+                this.error = '';
+                try {
+                    
+                    
+                    const res = await fetch('/api/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'same-origin',
+                        body: JSON.stringify({ username: this.username, password: this.password }),
+                    });
+                    if (res.ok) {
+                        window.location = '/';
+                        return;
+                    }
+                    let msg = '';
+                    try { msg = (await res.json()).error || ''; } catch (e) {   }
+                    if (res.status === 401) this.error = 'Wrong username or password.';
+                    else if (msg) this.error = msg.charAt(0).toUpperCase() + msg.slice(1);  
+                    else this.error = "Couldn't sign in. Try again.";
+                } catch (e) {
+                    this.error = "Couldn't sign in. Try again.";
+                } finally {
+                    this.loading = false;
+                }
+            },
+        };
+    }
+    </script>
+</body>
+</html>

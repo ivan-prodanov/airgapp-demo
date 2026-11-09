@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Add this car — Airgapp</title>
+    <!-- Served by the :80 enrol vhost from the same origin; no external assets. -->
+    <script src="/qrcode.min.js"></script>
+    <style>
+        :root {
+            --red: #e02434;
+            --bg: #0c0d0f;
+            --card: #17181b;
+            --fg: #f2f2f3;
+            --mute: #9a9ca1;
+            --line: #2d2e2f;
+        }
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; }
+        body {
+            background: var(--bg);
+            color: var(--fg);
+            font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 16px;
+            -webkit-text-size-adjust: 100%;
+        }
+        /* Phone (and anything narrow or portrait): one column — heading, code, button.
+           .side dissolves so its children take their place in that column. */
+        .card {
+            width: 100%;
+            max-width: 420px;
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            padding: 28px 24px 26px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+        }
+        .side { display: contents; }
+        h1 { order: 1; font-size: 20px; font-weight: 600; margin: 0 0 6px; letter-spacing: 0.1px; }
+        .sub { order: 2; color: var(--mute); font-size: 13.5px; line-height: 1.5; margin: 0 0 22px; }
+        #qr { order: 3; }
+        #gen { order: 4; }
+        .meta { order: 5; }
+        .err { order: 6; }
+        .foot { order: 7; }
+        /* Drawn like the console's System → Users code: white modules on the brand
+           red, with the Airgapp mark in the middle (error correction H absorbs it). */
+        .qr-wrap {
+            --qr: min(300px, 100%);
+            position: relative;
+            background: var(--red);
+            border-radius: calc(var(--qr) * 0.067);
+            width: var(--qr); aspect-ratio: 1;
+            padding: calc(var(--qr) * 0.056);
+            margin: 0 auto 18px;
+            display: flex; align-items: center; justify-content: center;
+            flex: none;
+        }
+        .qr-wrap svg { width: 100%; height: 100%; display: block; }
+        .qr-mark {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 22.4%; height: 22.4%;
+            background: var(--red); border-radius: 20%; padding: 1.7%;
+        }
+        .qr-mark img { display: block; width: 100%; height: 100%; border-radius: 16%; }
+        .qr-wrap.empty { background: #1f2024; color: var(--mute); font-size: 13px; padding: 20px; }
+        button {
+            appearance: none; border: none; cursor: pointer;
+            background: var(--red); color: #fff;
+            font-size: 15px; font-weight: 600;
+            padding: 13px 20px; border-radius: 11px; width: 100%;
+            transition: opacity 0.15s;
+        }
+        button:active { opacity: 0.8; }
+        button:disabled { opacity: 0.5; cursor: default; }
+        .meta { margin-top: 14px; font-size: 13px; color: var(--mute); min-height: 18px; }
+        .meta strong { color: var(--fg); font-variant-numeric: tabular-nums; }
+        .err { color: #ff6b74; font-size: 13.5px; line-height: 1.5; margin-top: 14px; }
+        .err:empty { display: none; }
+        .foot { margin-top: 20px; font-size: 11.5px; color: #6b6d72; line-height: 1.5; }
+
+        /* A landscape screen — the car's — is read from about a metre away: the code
+           takes most of the height, the words sit beside it, and everything scales
+           with the screen. Sized to fit without scrolling. */
+        @media (orientation: landscape) and (min-width: 900px) {
+            body { padding: 3vh 3vw; }
+            .card {
+                flex-direction: row;
+                align-items: center;
+                gap: clamp(36px, 4.5vw, 96px);
+                width: auto;
+                max-width: min(1500px, 94vw);
+                padding: clamp(28px, 4vh, 64px) clamp(32px, 4vw, 80px);
+                border-radius: clamp(18px, 1.6vw, 28px);
+                text-align: left;
+            }
+            .side { order: 4; display: flex; flex-direction: column; align-items: stretch; min-width: 0; max-width: 34em; }
+            .qr-wrap { --qr: min(70vh, 46vw); margin: 0; }
+            .qr-wrap.empty { font-size: clamp(18px, 1.6vw, 28px); text-align: center; padding: 8%; }
+            h1 { font-size: clamp(34px, 3.4vw, 64px); line-height: 1.1; margin-bottom: 0.4em; letter-spacing: -0.01em; }
+            .sub { font-size: clamp(20px, 1.7vw, 32px); line-height: 1.45; margin-bottom: 1.4em; }
+            button { font-size: clamp(22px, 1.9vw, 36px); padding: 0.75em 1.1em; border-radius: 0.55em; }
+            .meta { font-size: clamp(20px, 1.8vw, 34px); margin-top: 0.8em; min-height: 1.4em; }
+            .err { font-size: clamp(20px, 1.7vw, 30px); margin-top: 0.8em; }
+            .foot { font-size: clamp(15px, 1.15vw, 22px); margin-top: 1.6em; }
+        }
+    </style>
+</head>
+<body>
+    <main class="card">
+        <div id="qr" class="qr-wrap empty">Your code appears here</div>
+
+        <div class="side">
+            <h1>Add this car to your phone</h1>
+            <p class="sub">Generate a one-time code, then scan it with Airgapp to connect your phone to this car's relay.</p>
+
+            <button id="gen" onclick="generate()">Generate enrol code</button>
+            <div id="meta" class="meta"></div>
+            <div id="err" class="err"></div>
+
+            <p class="foot">The code lets a phone reach the relay. It can't unlock or drive the car — that still needs the phone's key to be paired at the car itself.</p>
+        </div>
+    </main>
+
+    <script>
+        var countdownTimer = null;
+
+        function fmt(sec) {
+            var m = Math.floor(sec / 60), s = sec % 60;
+            return m + ':' + (s < 10 ? '0' : '') + s;
+        }
+
+        // Same drawing as System → Users: one white path over the red box, a
+        // two-module quiet zone, and the Airgapp mark on top. Level H error
+        // correction keeps the code readable under the mark.
+        function renderQr(enrolUrl) {
+            var qr = qrcode(0, 'H');
+            qr.addData(enrolUrl);
+            qr.make();
+            var n = qr.getModuleCount(), m = 2, d = '';
+            for (var r = 0; r < n; r++) for (var c = 0; c < n; c++) if (qr.isDark(r, c)) d += 'M' + (c + m) + ' ' + (r + m) + 'h1v1h-1z';
+            var size = n + 2 * m;
+            var wrap = document.getElementById('qr');
+            wrap.classList.remove('empty');
+            wrap.innerHTML = '<svg viewBox="0 0 ' + size + ' ' + size + '" shape-rendering="crispEdges" role="img" aria-label="Enrol code">' +
+                '<path d="' + d + '" fill="#ffffff"/></svg>' +
+                '<div class="qr-mark"><img src="/airgapp-icon.png" alt=""></div>';
+        }
+
+        function startCountdown(sec) {
+            if (countdownTimer) clearInterval(countdownTimer);
+            var left = sec;
+            var meta = document.getElementById('meta');
+            function tick() {
+                if (left <= 0) {
+                    clearInterval(countdownTimer);
+                    meta.innerHTML = 'Code expired — generate a new one.';
+                    var wrap = document.getElementById('qr');
+                    wrap.classList.add('empty');
+                    wrap.innerHTML = 'Your code appears here';
+                    document.getElementById('gen').textContent = 'Generate enrol code';
+                    return;
+                }
+                meta.innerHTML = 'Scan within <strong>' + fmt(left) + '</strong>';
+                left--;
+            }
+            tick();
+            countdownTimer = setInterval(tick, 1000);
+        }
+
+        async function generate() {
+            var btn = document.getElementById('gen');
+            var err = document.getElementById('err');
+            err.textContent = '';
+            btn.disabled = true;
+            btn.textContent = 'Generating…';
+            try {
+                var res = await fetch('/issue', { method: 'POST' });
+                var text = await res.text();
+                var data = text ? JSON.parse(text) : null;
+                if (!res.ok) {
+                    throw new Error((data && data.error) || 'Could not generate a code.');
+                }
+                renderQr(data.enrol_url);
+                startCountdown(data.expires_in_sec || 600);
+                btn.textContent = 'Generate a new code';
+            } catch (e) {
+                err.textContent = e.message || 'Something went wrong.';
+                document.getElementById('meta').textContent = '';
+            } finally {
+                btn.disabled = false;
+                if (btn.textContent === 'Generating…') btn.textContent = 'Generate enrol code';
+            }
+        }
+    </script>
+</body>
+</html>

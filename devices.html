@@ -1,0 +1,352 @@
+
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8"><link rel="icon" href="/static/img/airgapp-icon.png"><script src="/wasm_exec.js"></script><script src="/demo-boot.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Devices — Airgapp</title>
+    <link rel="preload" href="/static/fonts/saira.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/static/fonts/martian-mono.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="/static/css/gap.css">
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="/" aria-label="Airgapp dashboard"><span class="brand-logo" aria-hidden="true"></span></a>
+        <nav class="topnav" aria-label="Primary">
+            <a class="navlink" href="/">Dashboard</a>
+            <a class="navlink active" href="/devices" aria-current="page">Devices</a>
+            <a class="navlink" href="/traffic">Traffic</a>
+            <a class="navlink" href="/filters">Filters</a>
+            <a class="navlink" href="/system">System</a>
+        </nav>
+    </header>
+    <main class="content">
+        
+<div class="wrap" x-data="devicesApp()">
+    <div class="phead" data-rise>
+        <p class="eyebrow">On the network · <b x-text="nOnline + ' online'">0 online</b> of <span x-text="nTotal">0</span></p>
+        <h1 class="h1">Devices</h1>
+    </div>
+
+    <section class="specimen" :class="'s-' + teslaPolicy" aria-labelledby="tesla-h" data-rise="1">
+        <div class="spec-l">
+            <h2 class="spec-name" id="tesla-h">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M3 13l1.6-4.6A2 2 0 0 1 6.5 7h11a2 2 0 0 1 1.9 1.4L21 13v4.5a.9.9 0 0 1-.9.9h-1.2a.9.9 0 0 1-.9-.9V16.5H6v1.5a.9.9 0 0 1-.9.9H3.9a.9.9 0 0 1-.9-.9z"/><circle cx="7.2" cy="15" r="1.3" fill="currentColor" stroke="none"/><circle cx="16.8" cy="15" r="1.3" fill="currentColor" stroke="none"/></svg>
+                Tesla
+            </h2>
+            <template x-if="tesla">
+                <div>
+                    <div class="spec-meta">
+                        <span class="odot" :class="{ off: !tesla.online }"></span><span x-text="presence(tesla)"></span>
+                        <span class="spec-mac"><span aria-hidden="true">·</span><span x-text="tesla.mac_address"></span></span>
+                        <template x-if="tesla.ip_address"><span><span aria-hidden="true">·</span> <span x-text="tesla.ip_address"></span></span></template>
+                    </div>
+                    <div class="spec-live">
+                        <span class="pd"></span>
+                        <span x-show="tesla.status !== 'open'"><b x-text="fmt(tesla.blocked_1h || 0)">0</b> blocked this hour</span>
+                        <span x-show="tesla.status === 'open'">Nothing blocked · everything passes</span>
+                    </div>
+                    <p class="spec-log" x-show="tesla.ignore_traffic_log">Traffic logging is off. <button class="linkbtn" type="button" @click="teslaLogOn()">Turn on</button></p>
+                </div>
+            </template>
+            <p class="spec-none" x-show="loaded && !tesla" x-cloak>No Tesla yet. It'll appear here when it joins the Airgapp Wi-Fi.</p>
+        </div>
+        <div class="spec-r" x-show="tesla">
+            <div class="reg" role="radiogroup" aria-label="Gate policy for Tesla">
+                <label class="regseg s-blocked"><input type="radio" name="pol-tesla" value="blocked" :checked="teslaPolicy === 'blocked'" @change="setTesla('blocked', $event)"><span>Blocked</span></label>
+                <label class="regseg s-filtered"><input type="radio" name="pol-tesla" value="filtered" :checked="teslaPolicy === 'filtered'" @change="setTesla('filtered', $event)"><span>Filtered</span></label>
+                <label class="regseg s-open"><input type="radio" name="pol-tesla" value="open" :checked="teslaPolicy === 'open'" @change="setTesla('open', $event)"><span>Open</span></label>
+            </div>
+            <label class="polpill" :class="'s-' + teslaPolicy">
+                <span class="vh">Gate policy for Tesla</span>
+                <span class="pp-face"><span x-text="L[teslaPolicy]"></span><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3.5l3 3 3-3"/></svg></span>
+                <select :value="teslaPolicy" @change="setTesla($event.target.value, $event)"><option value="blocked">Blocked</option><option value="filtered">Filtered</option><option value="open">Open</option></select>
+            </label>
+        </div>
+        <div class="d-confirm" role="group" aria-label="Confirm opening the Tesla" x-show="teslaConfirm" x-cloak>
+            <p>Open the Tesla? Everything it sends will pass the gate, and data that leaves can't be recalled.</p>
+            <div class="btns"><button class="btn" type="button" @click="teslaConfirm = false">Cancel</button><button class="btn danger" type="button" @click="openTesla()">Open the Tesla</button></div>
+        </div>
+    </section>
+
+    <div class="rhead" data-rise="2"><h2>Other devices</h2></div>
+    <ul class="legend" aria-label="Policies" data-rise="2">
+        <li class="s-blocked"><i></i><span><b>Blocked</b> no internet</span></li>
+        <li class="s-filtered"><i></i><span><b>Filtered</b> approved sites only</span></li>
+        <li class="s-open"><i></i><span><b>Open</b> full internet</span></li>
+    </ul>
+    <div class="rosterwrap" data-rise="2">
+        <ul class="roster" aria-label="Other devices">
+            <template x-for="d in rows" :key="d.mac_address">
+                <li class="drow" :class="rowClass(d)">
+                    <div class="d-id" @click="toggle(d)">
+                        <div class="dname"><span class="dname-t" x-text="nameOf(d)"></span><span class="newtag" x-show="isNew(d)">New</span></div>
+                        <div class="dhost"><span class="odot" :class="{ off: !d.online }"></span><span class="dpres" x-text="presence(d)"></span><span class="dsep" aria-hidden="true" x-show="subOf(d)">·</span><span class="dsub" x-text="subOf(d)" x-show="subOf(d)"></span></div>
+                    </div>
+                    <div class="d-pol">
+                        <div class="reg" role="radiogroup" :aria-label="'Gate policy for ' + nameOf(d)">
+                            <template x-for="k in POLICIES" :key="k">
+                                <label class="regseg" :class="'s-' + k"><input type="radio" :name="'pol-' + key(d)" :value="k" :checked="d.status === k" @change="setPolicy(d, k, $event)"><span x-text="L[k]"></span></label>
+                            </template>
+                        </div>
+                        <label class="polpill" :class="'s-' + d.status">
+                            <span class="vh" x-text="'Gate policy for ' + nameOf(d)"></span>
+                            <span class="pp-face"><span x-text="L[d.status]"></span><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3.5l3 3 3-3"/></svg></span>
+                            <select :value="d.status" @change="setPolicy(d, $event.target.value, $event)"><option value="blocked">Blocked</option><option value="filtered">Filtered</option><option value="open">Open</option></select>
+                        </label>
+                    </div>
+                    <button class="d-chev" type="button" @click="toggle(d)" :aria-expanded="open === d.mac_address" :aria-label="'Details for ' + nameOf(d)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3.5l4.5 4.5L6 12.5"/></svg></button>
+                    <div class="d-fold"><div class="d-fold-in"><div class="d-panel">
+                        <dl class="d-facts">
+                            <div><dt>MAC</dt><dd x-text="d.mac_address"></dd></div>
+                            <div><dt>IP</dt><dd x-text="d.ip_address || '—'"></dd></div>
+                            <div><dt>Host</dt><dd x-text="d.hostname || '—'"></dd></div>
+                            <div><dt>First seen</dt><dd x-text="rel(d.first_seen)"></dd></div>
+                            <div><dt>Last seen</dt><dd x-text="rel(d.last_seen)"></dd></div>
+                        </dl>
+                        <div class="d-ctl">
+                            <label class="logrow"><span class="flabel">Log traffic</span><span class="sw"><input type="checkbox" role="switch" :checked="!d.ignore_traffic_log" @change="toggleLog(d, $event)" :aria-label="'Log traffic from ' + nameOf(d)"><span class="track"><span class="k"></span></span></span></label>
+                            <label class="field"><span class="flabel">Name</span><input class="finput" type="text" maxlength="64" :value="d.alias" :placeholder="d.hostname || 'Unknown device'" @change="rename(d, $event.target.value)"></label>
+                            <button class="btn danger d-forget" type="button" @click="confirm = { mac: d.mac_address, kind: 'forget' }">Forget device</button>
+                        </div>
+                        <template x-if="confirm && confirm.mac === d.mac_address">
+                            <div class="d-confirm" role="group" :aria-label="confirm.kind === 'log' ? 'Stop and wipe' : 'Forget device'">
+                                <p x-text="confirmText(d)"></p>
+                                <div class="btns"><button class="btn" type="button" @click="confirm = null">Cancel</button><button class="btn danger" type="button" @click="runConfirm(d)" x-text="confirm.kind === 'log' ? 'Stop and wipe' : 'Forget device'"></button></div>
+                            </div>
+                        </template>
+                    </div></div></div>
+                </li>
+            </template>
+        </ul>
+        <p class="empty" x-show="loaded && rows.length === 0" x-cloak>No other devices yet. Connect something to the hotspot and it'll appear here as Blocked.</p>
+    </div>
+</div>
+
+    </main>
+
+    <div id="toast-container" role="status" aria-live="polite"></div>
+
+    <script src="/static/js/alpine.min.js" defer></script>
+    <script src="/static/js/app.js"></script>
+    
+<script>
+
+
+function devicesApp() {
+    const DAY = 864e5;
+    return {
+        L: { blocked: 'Blocked', filtered: 'Filtered', open: 'Open' },
+        POLICIES: ['blocked', 'filtered', 'open'],
+        tesla: null, rows: [], loaded: false,
+        open: null, confirm: null, teslaConfirm: false,
+        active: {}, gen: {},   
+        get teslaPolicy() { return this.tesla ? this.tesla.status : 'none'; },   
+        get nOnline() { return this.rows.filter(d => d.online).length + (this.tesla && this.tesla.online ? 1 : 0); },
+        get nTotal() { return this.rows.length + (this.tesla ? 1 : 0); },
+
+        init() {
+            this.q = location.search;   
+            this.load();
+            this.onVis = () => { if (document.visibilityState === 'visible') { this.load(); this.start(); } else this.stop(); };
+            document.addEventListener('visibilitychange', this.onVis);
+            this.start();
+        },
+        destroy() { this.stop(); document.removeEventListener('visibilitychange', this.onVis); },
+        start() {
+            this.stop();
+            this.listTimer = setInterval(() => this.load(), 10000);
+            this.actTimer = setInterval(() => this.pollActivity(), 3000);
+        },
+        stop() { clearInterval(this.listTimer); clearInterval(this.actTimer); },
+
+        
+        
+        
+        
+        async load() {
+            const sent = Object.assign({}, this.gen);
+            const fresh = mac => (this.gen[mac] || 0) === (sent[mac] || 0);
+            let list;
+            try { list = await api.get('/api/devices' + this.q); } catch (e) { return; }
+            list = list || [];
+            const t = list.find(d => d.tesla);
+            if (!t || !this.tesla || this.tesla.mac_address !== t.mac_address) {
+                this.tesla = t || null;          
+                this.teslaConfirm = false;
+            } else if (fresh(t.mac_address)) {
+                Object.assign(this.tesla, t);    
+            }
+            const others = list.filter(d => !d.tesla);
+            const byMac = new Map(others.map(d => [d.mac_address, d]));
+            if (!this.loaded) {
+                this.rows = others.slice().sort((a, b) => this.rank(a) - this.rank(b) || this.nameOf(a).localeCompare(this.nameOf(b)));
+            } else {
+                const kept = this.rows.filter(d => byMac.has(d.mac_address)).map(d => fresh(d.mac_address) ? Object.assign(d, byMac.get(d.mac_address)) : d);
+                const known = new Set(this.rows.map(d => d.mac_address));
+                const newcomers = others.filter(d => !known.has(d.mac_address)).sort((a, b) => this.nameOf(a).localeCompare(this.nameOf(b)));
+                this.rows = newcomers.concat(kept);
+            }
+            this.loaded = true;
+        },
+        async pollActivity() {
+            if (document.visibilityState !== 'visible') return;
+            let r;
+            try { r = await api.get('/api/devices/activity' + this.q); } catch (e) { return; }
+            for (const mac of (r && r.active) || []) {
+                this.active = Object.assign({}, this.active, { [mac]: true });
+                setTimeout(() => { const a = Object.assign({}, this.active); delete a[mac]; this.active = a; }, 700);
+            }
+        },
+
+        rank(d) { return this.isNew(d) ? 0 : (d.online ? 1 : 2); },
+        isNew(d) { const t = Date.parse(d.first_seen); return !isNaN(t) && t > 0 && Date.now() - t < DAY; },
+        key(d) { return d.mac_address.replace(/:/g, ''); },
+        nameOf(d) { return (d.alias || '').trim() || d.hostname || 'Unknown device'; },
+        subOf(d) {
+            if (this.isNew(d)) return 'joined ' + this.rel(d.first_seen);
+            if ((d.alias || '').trim() && d.hostname) return d.hostname;
+            if (!d.hostname) return 'unrecognised';
+            return '';
+        },
+        presence(d) { return d.online ? 'Online' : 'Offline · seen ' + this.rel(d.last_seen); },
+        rowClass(d) {
+            return 's-' + d.status + (this.active[d.mac_address] ? ' active' : '') + (this.open === d.mac_address ? ' open' : '') + (d.online ? '' : ' off');
+        },
+        rel(ts) {
+            const t = Date.parse(ts);
+            if (isNaN(t) || t <= 0) return '—';
+            const s = (Date.now() - t) / 1000;
+            if (s < 60) return 'just now';
+            if (s < 3600) return Math.floor(s / 60) + ' min ago';
+            if (s < 86400) return Math.floor(s / 3600) + ' h ago';
+            return new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+        },
+        fmt(n) { return Number(n).toLocaleString('en-US'); },
+        toggle(d) { this.open = this.open === d.mac_address ? null : d.mac_address; this.confirm = null; },
+
+        
+        resync(ev, value) {
+            if (!ev || !ev.target) return;
+            if (ev.target.tagName === 'SELECT') { ev.target.value = value; return; }
+            const group = this.$root.querySelectorAll('input[name="' + ev.target.name + '"]');
+            group.forEach(i => { i.checked = i.value === value; });
+        },
+        async putStatus(mac, k) {
+            await api.put('/api/devices/' + encodeURIComponent(mac) + '/status' + this.q, { status: k });
+        },
+        touch(mac) { this.gen[mac] = (this.gen[mac] || 0) + 1; },
+        async setPolicy(d, k, ev) {
+            const prev = d.status;
+            if (prev === k) return;
+            d.status = k;
+            this.touch(d.mac_address);
+            try {
+                await this.putStatus(d.mac_address, k);
+                notify(this.nameOf(d) + ' → ' + this.L[k], 'info', { undo: () => this.revert(d, prev) });
+            } catch (e) {
+                
+                
+                d.status = prev;
+                this.resync(ev, prev);
+                this.load();
+            }
+        },
+        async revert(d, prev) {
+            const cur = d.status;
+            d.status = prev;
+            this.touch(d.mac_address);
+            try { await this.putStatus(d.mac_address, prev); } catch (e) { d.status = cur; this.load(); }
+        },
+        
+        async setTesla(k, ev) {
+            const t = this.tesla, prev = t.status;
+            if (prev === k) return;
+            if (k === 'open') { this.teslaConfirm = true; this.resync(ev, prev); return; }
+            this.teslaConfirm = false;
+            await this.applyTesla(k, prev, ev);
+        },
+        async openTesla() {
+            this.teslaConfirm = false;
+            if (this.tesla) await this.applyTesla('open', this.tesla.status);
+        },
+        async applyTesla(k, prev, ev) {
+            const t = this.tesla;
+            t.status = k;
+            this.touch(t.mac_address);
+            try {
+                await this.putStatus(t.mac_address, k);
+                notify('Tesla → ' + this.L[k], 'info', { undo: () => this.revert(t, prev) });
+            } catch (e) {
+                t.status = prev;
+                this.resync(ev, prev);
+                this.load();
+            }
+        },
+        async teslaLogOn() {
+            const t = this.tesla;
+            this.touch(t.mac_address);
+            try {
+                await api.put('/api/devices/' + encodeURIComponent(t.mac_address) + this.q, { ignore_traffic_log: false });
+                t.ignore_traffic_log = false;
+                notify('Traffic logging resumed');
+            } catch (e) {   }
+        },
+
+        
+        async toggleLog(d, ev) {
+            if (!d.ignore_traffic_log) {
+                ev.target.checked = true;
+                this.open = d.mac_address;
+                this.confirm = { mac: d.mac_address, kind: 'log' };
+                return;
+            }
+            this.touch(d.mac_address);
+            try {
+                await api.put('/api/devices/' + encodeURIComponent(d.mac_address) + this.q, { ignore_traffic_log: false });
+                d.ignore_traffic_log = false;
+                notify('Traffic logging resumed');
+            } catch (e) { ev.target.checked = false; }
+        },
+        confirmText(d) {
+            const n = this.nameOf(d);
+            return this.confirm && this.confirm.kind === 'log'
+                ? 'Stop logging ' + n + ' and wipe its history from Traffic? Firewall rules keep applying.'
+                : 'Forget ' + n + '? Its traffic history is wiped. If it reconnects, it comes back as Blocked.';
+        },
+        async runConfirm(d) {
+            const kind = this.confirm && this.confirm.kind;
+            this.confirm = null;
+            const url = '/api/devices/' + encodeURIComponent(d.mac_address) + this.q;
+            this.touch(d.mac_address);
+            if (kind === 'log') {
+                try {
+                    await api.put(url, { ignore_traffic_log: true });
+                    d.ignore_traffic_log = true;
+                    notify('Logging off, history wiped');
+                } catch (e) {   }
+                return;
+            }
+            const name = this.nameOf(d);
+            try {
+                await api.delete(url);
+                this.rows = this.rows.filter(x => x.mac_address !== d.mac_address);
+                this.open = null;
+                notify(name + ' forgotten');
+            } catch (e) {   }
+        },
+        async rename(d, value) {
+            const alias = value.trim();
+            if (alias === (d.alias || '')) return;
+            this.touch(d.mac_address);
+            try {
+                await api.put('/api/devices/' + encodeURIComponent(d.mac_address) + this.q, { alias });
+                d.alias = alias;
+            } catch (e) {   }
+        },
+    };
+}
+</script>
+
+</body>
+</html>

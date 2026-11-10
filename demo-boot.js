@@ -38,4 +38,29 @@
     const tag = () => { if (document.querySelector('.airgapp-demo-tag')) return; const t = document.createElement('div'); t.className = 'airgapp-demo-tag'; t.innerHTML = '<b>Demo</b><span>Pretend data · resets on reload</span>'; document.body.append(t); };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', tag); else tag();
   }
+
+  // Framed by airgapp.net's car screen: tell the page when the console is ready and when the visitor
+  // first touches it, and let the page show how it works by tapping a nav tab. Only airgapp.net (and
+  // its local preview) may ask, and only for the console's own tabs.
+  if (framed) {
+    const PARENTS = new Set(['https://airgapp.net', 'http://localhost:8098']);
+    const TABS = new Set(['/', '/devices', '/traffic', '/filters', '/system']);
+    const tell = (msg, to) => { for (const o of to ? [to] : PARENTS) parent.postMessage({ airgapp: 1, ...msg }, o); };
+    const tab = href => TABS.has(href) ? document.querySelector(`.topnav a[href="${href}"]`) : null;
+    ready.then(() => {
+      const say = () => tell({ type: 'ready' });
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', say); else say();
+    });
+    addEventListener('pointerdown', () => tell({ type: 'touched' }), { once: true, capture: true });
+    addEventListener('keydown', () => tell({ type: 'touched' }), { once: true, capture: true });
+    addEventListener('message', e => {
+      if (!PARENTS.has(e.origin) || e.data?.airgapp !== 1) return;
+      const d = e.data;
+      if (d.type === 'where') {   // where a tab, or the page's heading, sits on the screen
+        const el = d.what === 'heading' ? document.querySelector('main h1, h1') : tab(d.href);
+        const r = el?.getBoundingClientRect();
+        tell({ type: 'here', key: d.key, ...(r && { x: r.left, y: r.top, w: r.width, h: r.height }) }, e.origin);
+      } else if (d.type === 'tap') tab(d.href)?.click();
+    });
+  }
 })();
